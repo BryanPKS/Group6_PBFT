@@ -28,17 +28,11 @@ void committed_state(int index);
 // nodelist = array of structs for each node
 
 
-const int f = 2;
+const int f = 33;
 const int node_size = 3*f + 1;
-
+bool matrix_made = false;
 // matrix empty for now until general code is running 
-int connection_matrix[node_size][node_size] = {{0,1,0,1,0,0,1},
-                                               {1,0,1,0,0,0,0},
-                                               {0,1,0,1,0,1,0},
-                                               {1,0,1,0,0,0,0},
-                                               {0,0,0,0,0,1,1},
-                                               {0,0,1,0,1,0,0},
-                                               {1,0,0,0,1,0,0}};
+int connection_matrix[node_size][node_size];
 int preposer_index = 0;
 std::vector<int> valid_nodes; // this is a vector of indexes of nodes that we will fill with all valid nodes that are going to be used
                               // this will help iterating through them in the other methods after pre_prepare_state
@@ -64,7 +58,6 @@ class node {
 node nodelist[node_size];
  
 void matrix_generator() {
-  int connection_matrix[node_size][node_size];
   for (int i = 0; i < node_size; i++) {
     for (int j = 0; j < node_size; j++) {
       if (i == j)
@@ -106,25 +99,29 @@ void pre_prepare_state(int index) {
   nodelist[index].set_state(prepared);  
 
   if (validate_state(prepared)) {             // check if 2f+1 nodes are in prepared state
-      std::cout << "prepared validated!"<< std::endl;  
+      std::cout << "prepared validated!"<< std::endl; 
       prepare_state(index);                   // then go to next stage
   }
 
   for(int i = 0; i < node_size; i++) {      // check for immediate connections
+    std::cout << connection_matrix[i][index] << ", ";
     if(connection_matrix[i][index] == 1) {
       connected_nodes.push_back(i); // add to vector of nodes that are connected for fallback node search
 
       if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false) {
         connected_nodes.clear();
+        std::cout << "\n";
         pre_prepare_state(i);   // go to next connected node not in current state recursively 
       }
     }
   }
-  for(int j = 0; j < connected_nodes.size(); j++) {
-    std::cout << connected_nodes[j] << std::endl; 
+  std::cout << "\n##################\n";
+  for (int i = 0; i < node_size; i++) {
+    if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false)
+      pre_prepare_state(i);
   }
 
-  
+  /*
   // no nodes that were connected were in the correct state or unfaulty
   for(int j = 0; j < connected_nodes.size(); j++) { // preform same check but for connected
     for(int i = 0; i < node_size; i++) {
@@ -135,7 +132,7 @@ void pre_prepare_state(int index) {
       }
     }
   }
-  
+  */
 }
 
 void prepare_state(int index) { // enter committed state
@@ -178,17 +175,17 @@ void committed_state(int index) { // insert into block chain then change state t
 
 void start_round() {
   valid_nodes.clear();
-  preposer_index = (rand() % node_size) - 1;
-  std::cout << preposer_index << "\n";
+  preposer_index = (rand() % node_size);
+  std::cout << preposer_index << " :PreposerIndex\n";
   pre_prepare_state(preposer_index);
 }
 int main() {
   srand((unsigned) time(NULL));
-  //nodelist[3].set_fault(true);
-  //nodelist[1].set_fault(true);
+  nodelist[3].set_fault(true);
+  nodelist[1].set_fault(true);
+  nodelist[5].set_fault(true);
   matrix_generator();
   start_round();
-  
   return 0;
 }
 
