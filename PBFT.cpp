@@ -28,7 +28,7 @@ void committed_state(int index);
 // nodelist = array of structs for each node
 
 
-const int f = 4;
+const int f = 2;
 const int node_size = 3*f + 1;
 
 // matrix empty for now until general code is running 
