@@ -13,6 +13,7 @@ public:
   blockChain() { chain.push_back(createGenesisBlock()); }
   void addBlock(int prevHash, std::string data) { chain.push_back(block(prevHash, data)); }
   block getLatestBlock() { return chain[chain.size() - 1]; }
+  void printStats() { for(int i = 0; i < chain.size(); i++) {std::cout << chain[i].getHash() << ": '" << chain[i].getData() << "'" << std::endl; }}
 
 };
 

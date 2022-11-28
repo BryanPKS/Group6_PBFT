@@ -2,6 +2,9 @@
 #include <vector>
 #include <cstdlib>
 #include <time.h>
+#include <iostream>
+#include "block.h"
+#include "blockChain.h"
 
 #define pre_prepared 0
 #define prepared 1
@@ -11,6 +14,7 @@
 void pre_prepare_state(int index);
 void prepare_state(int index);
 void committed_state(int index);
+void start_round(blockChain bc, block b);
 // pseudo:
 
 // classes 
@@ -30,6 +34,8 @@ void committed_state(int index);
 
 const int f = 33;
 const int node_size = 3*f + 1;
+blockChain* BLOCKCHAIN;
+block* BLOCK;
 bool matrix_made = false;
 // matrix empty for now until general code is running 
 int connection_matrix[node_size][node_size];
@@ -56,6 +62,11 @@ class node {
 };
 
 node nodelist[node_size];
+
+void printStats()
+{
+  BLOCKCHAIN->printStats();
+}
  
 void matrix_generator() {
   for (int i = 0; i < node_size; i++) {
@@ -78,16 +89,16 @@ bool validate_state(int STATE) {
   //for loop iterates through each node in the array, nodeList
   for(int i = 0; i < node_size; i++) {
     if(STATE == nodelist[i].get_state()) {
-      std::cout << "loop " << i << std::endl;
-      std::cout << STATE << " Equals: " << nodelist[i].get_state() << std::endl;
+      //std::cout << "loop " << i << std::endl;
+      //std::cout << STATE << " Equals: " << nodelist[i].get_state() << std::endl;
       validated++;
     }
     if(validated == 2 * f + 1) {
-      std::cout << "\n";
+      //std::cout << "\n";
       return true;
     }
   }
-  std::cout << "\n";
+  //std::cout << "\n";
   return false;
 }
 
@@ -104,18 +115,18 @@ void pre_prepare_state(int index) {
   }
 
   for(int i = 0; i < node_size; i++) {      // check for immediate connections
-    std::cout << connection_matrix[i][index] << ", ";
+    //std::cout << connection_matrix[i][index] << ", ";
     if(connection_matrix[i][index] == 1) {
       connected_nodes.push_back(i); // add to vector of nodes that are connected for fallback node search
 
       if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false) {
         connected_nodes.clear();
-        std::cout << "\n";
+        //std::cout << "\n";
         pre_prepare_state(i);   // go to next connected node not in current state recursively 
       }
     }
   }
-  std::cout << "\n##################\n";
+  //std::cout << "\n##################\n";
   for (int i = 0; i < node_size; i++) {
     if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false)
       pre_prepare_state(i);
@@ -154,9 +165,22 @@ void prepare_state(int index) { // enter committed state
 void committed_state(int index) { // insert into block chain then change state to final committed
   nodelist[index].set_state(final_committed);
   if (validate_state(final_committed)) {
+    std::string decision;
     std::cout << "Final validated!"<< std::endl; 
     //insert into blockchain
+    BLOCKCHAIN->addBlock(BLOCKCHAIN->getLatestBlock().getHash(), BLOCK->getData());
+    printStats();
     //NOTE: this might not be where we add to the block chain
+    std::cout << "Go for another round? (y/n): ";
+    getline(std::cin, decision);
+    if(decision == "y" || decision == "Y")
+    {
+      std::string blockInfo;
+      std::cout << "Enter string data for block: ";
+      getline(std::cin, blockInfo);
+      block bb(BLOCKCHAIN->getLatestBlock().getHash(), blockInfo);
+      start_round(*BLOCKCHAIN, bb);
+    }
     exit(0);
     return; // end loop; round succesfully finished
   }
@@ -171,21 +195,24 @@ void committed_state(int index) { // insert into block chain then change state t
    
 }
 
-
-
-void start_round() {
+void start_round(blockChain bc, block b) {
+  BLOCKCHAIN = &bc;
+  BLOCK = &b;
   valid_nodes.clear();
   preposer_index = (rand() % node_size);
   std::cout << preposer_index << " :PreposerIndex\n";
   pre_prepare_state(preposer_index);
 }
+
 int main() {
+  blockChain bc1;
+  block b1(bc1.getLatestBlock().getHash(), "info stuff");
   srand((unsigned) time(NULL));
   nodelist[3].set_fault(true);
   nodelist[1].set_fault(true);
   nodelist[5].set_fault(true);
   matrix_generator();
-  start_round();
+  start_round(bc1, b1);
   return 0;
 }
 
