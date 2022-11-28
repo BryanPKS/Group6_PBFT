@@ -32,14 +32,14 @@ void start_round(blockChain bc, block b);
 // nodelist = array of structs for each node
 
 
-const int f = 33;
-const int node_size = 3*f + 1;
+const int f = 33;                   // This is the amount of faulty nodes allowed in the system; If you would like to change the amount of nodes, change this value and the nodes size will change to 3*f+1
+const int node_size = 3*f + 1;      // Amount of nodes in the system.
 blockChain* BLOCKCHAIN;
 block* BLOCK;
-bool matrix_made = false;
 // matrix empty for now until general code is running 
 int connection_matrix[node_size][node_size];
 int preposer_index = 0;
+std::string fault_amount;
 std::vector<int> valid_nodes; // this is a vector of indexes of nodes that we will fill with all valid nodes that are going to be used
                               // this will help iterating through them in the other methods after pre_prepare_state
 class node {
@@ -68,7 +68,7 @@ void printStats()
   BLOCKCHAIN->printStats();
 }
  
-void matrix_generator() {
+void matrix_generator() {                 // This function generates the values of the adjacency matrix at runtime.
   for (int i = 0; i < node_size; i++) {
     for (int j = 0; j < node_size; j++) {
       if (i == j)
@@ -84,21 +84,16 @@ void matrix_generator() {
   }
 }
 
-bool validate_state(int STATE) {
+bool validate_state(int STATE) { // This funtion allows us to check the state of every node until we have found atleast 2*f+1 nodes in the system that are of the desired state. If we don't then return false
   int validated = 0;
-  //for loop iterates through each node in the array, nodeList
   for(int i = 0; i < node_size; i++) {
     if(STATE == nodelist[i].get_state()) {
-      //std::cout << "loop " << i << std::endl;
-      //std::cout << STATE << " Equals: " << nodelist[i].get_state() << std::endl;
       validated++;
     }
     if(validated == 2 * f + 1) {
-      //std::cout << "\n";
       return true;
     }
   }
-  //std::cout << "\n";
   return false;
 }
 
@@ -106,7 +101,6 @@ bool validate_state(int STATE) {
 
 void pre_prepare_state(int index) { 
   valid_nodes.push_back(index); // add to valid nodes vector so we don't have to preform search again
-  std::vector<int> connected_nodes;
   nodelist[index].set_state(prepared);  
 
   if (validate_state(prepared)) {             // check if 2f+1 nodes are in prepared state
@@ -115,35 +109,17 @@ void pre_prepare_state(int index) {
   }
 
   for(int i = 0; i < node_size; i++) {      // check for immediate connections
-    //std::cout << connection_matrix[i][index] << ", ";
     if(connection_matrix[i][index] == 1) {
-      connected_nodes.push_back(i); // add to vector of nodes that are connected for fallback node search
 
       if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false) {
-        connected_nodes.clear();
-        //std::cout << "\n";
         pre_prepare_state(i);   // go to next connected node not in current state recursively 
       }
     }
   }
-  //std::cout << "\n##################\n";
-  for (int i = 0; i < node_size; i++) {
+  for (int i = 0; i < node_size; i++) {     // if there are no immediate connections that have valid nodes then iteratively find the next valid node
     if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false)
       pre_prepare_state(i);
   }
-
-  /*
-  // no nodes that were connected were in the correct state or unfaulty
-  for(int j = 0; j < connected_nodes.size(); j++) { // preform same check but for connected
-    for(int i = 0; i < node_size; i++) {
-      if(connection_matrix[i][j] == 1) {
-        if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false)
-          pre_prepare_state(i);              // go to next connected node not in current state recursively
-
-      }
-    }
-  }
-  */
 }
 
 void prepare_state(int index) { // enter committed state
@@ -168,21 +144,40 @@ void committed_state(int index) { // insert into block chain then change state t
     std::string decision;
     std::cout << "Final validated!"<< std::endl; 
     //insert into blockchain
-    BLOCKCHAIN->addBlock(BLOCKCHAIN->getLatestBlock().getHash(), BLOCK->getData());
-    printStats();
-    //NOTE: this might not be where we add to the block chain
+    BLOCKCHAIN->addBlock(BLOCKCHAIN->getLatestBlock().getHash(), BLOCK->getData()); // add a new block
+    printStats();                                                                   // print the new block
     std::cout << "Go for another round? (y/n): ";
     getline(std::cin, decision);
     if(decision == "y" || decision == "Y")
     {
+      for(int i = 0; i < node_size; i++) {  // set all the nodes to fault for next runs
+        nodelist[i].set_fault(false);
+      }
+
       std::string blockInfo;
       std::cout << "Enter string data for block: ";
       getline(std::cin, blockInfo);
-      block bb(BLOCKCHAIN->getLatestBlock().getHash(), blockInfo);
+      block bb(BLOCKCHAIN->getLatestBlock().getHash(), blockInfo); // prepare next string to add to blockchain
+
+      std::cout << "Enter amount of faults you'd like to add to the system" << std::endl;
+      std::cout << "The amount of faults can be 1 to " << f << ": ";
+      getline(std::cin , fault_amount);
+      for(int i = 0; i < stoi(fault_amount); i++) {         // after input it takes the amount of faults that are to be added and adds them to the nodes list
+        int rand_index = (rand() % node_size);
+        if(nodelist[rand_index].get_fault() == false) {
+          nodelist[rand_index].set_fault(true);
+        }
+        else {
+          while (nodelist[rand_index].get_fault()) {
+            rand_index = (rand() % node_size);
+          }
+          nodelist[rand_index].set_fault(true);
+        }
+      }
       start_round(*BLOCKCHAIN, bb);
     }
-    exit(0);
-    return; // end loop; round succesfully finished
+    exit(0); // end program; all rounds are succesfully finished
+    return; 
   }
   
 
@@ -199,20 +194,18 @@ void start_round(blockChain bc, block b) {
   BLOCKCHAIN = &bc;
   BLOCK = &b;
   valid_nodes.clear();
-  preposer_index = (rand() % node_size);
+  preposer_index = (rand() % node_size); // chooses a random node in the nodes list to be the preposer
   std::cout << preposer_index << " :PreposerIndex\n";
   pre_prepare_state(preposer_index);
 }
 
 int main() {
   blockChain bc1;
-  block b1(bc1.getLatestBlock().getHash(), "info stuff");
+  block b1(bc1.getLatestBlock().getHash(), "info stuff"); // setup the first block for the first round
   srand((unsigned) time(NULL));
-  nodelist[3].set_fault(true);
-  nodelist[1].set_fault(true);
-  nodelist[5].set_fault(true);
-  matrix_generator();
-  start_round(bc1, b1);
+  
+  matrix_generator(); // generate matrix for system
+  start_round(bc1, b1); // start first round
   return 0;
 }
 
