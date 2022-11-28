@@ -15,14 +15,30 @@ void pre_prepare_state(int index);
 void prepare_state(int index);
 void committed_state(int index);
 void start_round(blockChain bc, block b);
+// pseudo:
+
+// classes 
+// print matrix
+// rand function to randomly select starting node, before pre-prepared
+
+//2/3 function check, takes state of node. if 2f + 1 
+
+
+// 7 nodes in system, max 2 faulty nodes
+// variable f, 3f + 1 amount of nodes in system, f = faulty nodes
+// minimum nodes in the system, 2f + 1, more than 2/3 of total nodes have to be non-faulty
+
+// connection matrix = matrix of all connections, 
+// nodelist = array of structs for each node
+
 
 const int f = 33;                   // This is the amount of faulty nodes allowed in the system; If you would like to change the amount of nodes, change this value and the nodes size will change to 3*f+1
 const int node_size = 3*f + 1;      // Amount of nodes in the system.
 blockChain* BLOCKCHAIN;
 block* BLOCK;
-
-int connection_matrix[node_size][node_size]; // matrix empty for now until general code is running 
-int preposer_index = 0;
+// matrix empty for now until general code is running 
+int connection_matrix[node_size][node_size];
+int preposer_index = 0, connection_search_failures = 0;
 std::string fault_amount;
 std::vector<int> valid_nodes; // this is a vector of indexes of nodes that we will fill with all valid nodes that are going to be used
                               // this will help iterating through them in the other methods after pre_prepare_state
@@ -62,9 +78,9 @@ void matrix_generator() {                 // This function generates the values 
         connection_matrix[j][i] = connection_matrix[i][j];
       }
 
-      std::cout << connection_matrix[i][j] << ", ";   
+      //std::cout << connection_matrix[i][j] << ", ";   
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
 }
 
@@ -80,6 +96,8 @@ bool validate_state(int STATE) { // This funtion allows us to check the state of
   }
   return false;
 }
+
+
 
 void pre_prepare_state(int index) { 
   valid_nodes.push_back(index); // add to valid nodes vector so we don't have to preform search again
@@ -98,6 +116,9 @@ void pre_prepare_state(int index) {
       }
     }
   }
+
+  connection_search_failures++;
+  std::cout << connection_search_failures << ", " << index << ", " ;
   for (int i = 0; i < node_size; i++) {     // if there are no immediate connections that have valid nodes then iteratively find the next valid node
     if(nodelist[i].get_state() != prepared && nodelist[i].get_fault() == false)
       pre_prepare_state(i);
@@ -127,7 +148,8 @@ void committed_state(int index) { // insert into block chain then change state t
     std::cout << "Final validated!"<< std::endl; 
     //insert into blockchain
     BLOCKCHAIN->addBlock(BLOCKCHAIN->getLatestBlock().getHash(), BLOCK->getData()); // add a new block
-    printStats();                                                                   // print the new block
+    printStats();       
+    std::cout << "There were " << connection_search_failures << " connection search failures in this round." << std::endl;                                                            // print the new block
     std::cout << "Go for another round? (y/n): ";
     getline(std::cin, decision);
     if(decision == "y" || decision == "Y")
@@ -156,6 +178,7 @@ void committed_state(int index) { // insert into block chain then change state t
           nodelist[rand_index].set_fault(true);
         }
       }
+      
       start_round(*BLOCKCHAIN, bb);
     }
     exit(0); // end program; all rounds are succesfully finished
@@ -175,6 +198,7 @@ void committed_state(int index) { // insert into block chain then change state t
 void start_round(blockChain bc, block b) {
   BLOCKCHAIN = &bc;
   BLOCK = &b;
+  connection_search_failures = 0;
   valid_nodes.clear();
   preposer_index = (rand() % node_size); // chooses a random node in the nodes list to be the preposer
   std::cout << preposer_index << " :PreposerIndex\n";
