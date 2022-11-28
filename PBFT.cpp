@@ -15,29 +15,13 @@ void pre_prepare_state(int index);
 void prepare_state(int index);
 void committed_state(int index);
 void start_round(blockChain bc, block b);
-// pseudo:
-
-// classes 
-// print matrix
-// rand function to randomly select starting node, before pre-prepared
-
-//2/3 function check, takes state of node. if 2f + 1 
-
-
-// 7 nodes in system, max 2 faulty nodes
-// variable f, 3f + 1 amount of nodes in system, f = faulty nodes
-// minimum nodes in the system, 2f + 1, more than 2/3 of total nodes have to be non-faulty
-
-// connection matrix = matrix of all connections, 
-// nodelist = array of structs for each node
-
 
 const int f = 33;                   // This is the amount of faulty nodes allowed in the system; If you would like to change the amount of nodes, change this value and the nodes size will change to 3*f+1
 const int node_size = 3*f + 1;      // Amount of nodes in the system.
 blockChain* BLOCKCHAIN;
 block* BLOCK;
-// matrix empty for now until general code is running 
-int connection_matrix[node_size][node_size];
+
+int connection_matrix[node_size][node_size]; // matrix empty for now until general code is running 
 int preposer_index = 0;
 std::string fault_amount;
 std::vector<int> valid_nodes; // this is a vector of indexes of nodes that we will fill with all valid nodes that are going to be used
@@ -96,8 +80,6 @@ bool validate_state(int STATE) { // This funtion allows us to check the state of
   }
   return false;
 }
-
-
 
 void pre_prepare_state(int index) { 
   valid_nodes.push_back(index); // add to valid nodes vector so we don't have to preform search again
